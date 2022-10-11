@@ -1,32 +1,44 @@
-from config import api_key_prod, secret_key_prod, api_key_test, secret_key_test
 from binance import Client
 import warnings
 import time
 import os
 from datetime import datetime
-import requests
-import json
-import uuid
+from dotenv import load_dotenv
+from supabase import create_client, Client as SupaClient
 
+
+load_dotenv()
+
+binance_api_key: str = ""
+binance_secret_key: str = ""
+
+environment: str = os.environ.get("ENVIRONMENT")
+
+if environment == "development":
+    binance_api_key: str = os.environ.get("BINANCE_API_KEY_TEST")
+    binance_secret_key: str = os.environ.get("BINANCE_SECRET_KEY_TEST")
+else:
+    binance_api_key: str = os.environ.get("BINANCE_API_KEY")
+    binance_secret_key: str = os.environ.get("BINANCE_SECRET_KEY")
 
 warnings.filterwarnings("ignore")
-client = Client(api_key=api_key_test, api_secret=secret_key_test, testnet=True)
+client = Client(api_key=binance_api_key,
+                api_secret=binance_secret_key, testnet=True)
 
-link = "https://bot-macd-default-rtdb.firebaseio.com"
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: SupaClient = create_client(url, key)
 
 while True:
     timestamp = datetime.now()
     btc = client.get_asset_balance(asset='BTC')
     usdt = client.get_asset_balance(asset='USDT')
 
-    data = {
+    supabase.table("saldos").insert({
         "btc": float(btc['free']),
         "usdt": float(usdt['free']),
         "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S")
-    }
-
-    requests.post(
-        f"{link}/saldos/.json", data=json.dumps(data))
+    }).execute()
 
     os.system('cls')
     print('-------------------------------------------')

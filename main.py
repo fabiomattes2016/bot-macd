@@ -1,13 +1,3 @@
-from config import (
-    api_key_prod,
-    secret_key_prod,
-    api_key_test,
-    secret_key_test,
-    pair,
-    amount,
-    target,
-    stop
-)
 from signals import Signals
 from binance import Client
 import pandas as pd
@@ -15,16 +5,37 @@ import time
 from ta import momentum, trend
 import warnings
 import os
-import requests
-import json
-import uuid
 from datetime import datetime
+from dotenv import load_dotenv
+from supabase import create_client, Client as SupaClient
+
+load_dotenv()
+
+binance_api_key: str = ""
+binance_secret_key: str = ""
+
+pair: str = os.environ.get("PAIR")
+amount: float = float(os.environ.get("AMOUNT"))
+target: float = float(os.environ.get("TARGET"))
+stop: float = float(os.environ.get("STOP"))
+
+environment: str = os.environ.get("ENVIRONMENT")
+
+if environment == "development":
+    binance_api_key: str = os.environ.get("BINANCE_API_KEY_TEST")
+    binance_secret_key: str = os.environ.get("BINANCE_SECRET_KEY_TEST")
+else:
+    binance_api_key: str = os.environ.get("BINANCE_API_KEY")
+    binance_secret_key: str = os.environ.get("BINANCE_SECRET_KEY")
 
 
 warnings.filterwarnings("ignore")
-link = "https://bot-macd-default-rtdb.firebaseio.com"
-timestamp = datetime.now()
-client = Client(api_key=api_key_test, api_secret=secret_key_test, testnet=True)
+client = Client(api_key=binance_api_key,
+                api_secret=binance_secret_key, testnet=True)
+
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: SupaClient = create_client(url, key)
 
 
 def get_minute_data(symbol, interval, lookback):
@@ -60,18 +71,16 @@ inst.decide()
 
 
 def strategy(pair, qty, open_position=False):
+    timestamp = datetime.now()
     buyprice: float = 0.0
     df = get_minute_data(pair, '1m', '100')
     apply_technicals(df)
     inst = Signals(df, 25)
     inst.decide()
 
-    data = {
+    supabase.table("current_price").update({
         "price": float(df.Close.iloc[-1])
-    }
-
-    requests.patch(
-        f"{link}/currentPrice/1ca584fc-80a3-45d0-b9ec-5ca0da8fc570/.json", data=json.dumps(data))
+    }).eq("id", "24b8b5f0-8e76-4cbe-9f1e-6841fd03fa3a").execute()
 
     os.system('cls')
     print(f'Current Close -> ' + str(df.Close.iloc[-1]))
@@ -81,17 +90,14 @@ def strategy(pair, qty, open_position=False):
             symbol=pair, side='BUY', type='MARKET', quantity=qty)
         buyprice = float(order['fills'][0]['price'])
 
-        data = {
-            "buyprice": buyprice,
+        supabase.table("compras").insert({
+            "buyPrice": buyprice,
             "targetPrice": buyprice * target,
             "stopPrice": buyprice * stop,
             "pair": pair,
             "quantity": qty,
-            "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S"),
-            "key": str(uuid.uuid4())
-        }
-
-        requests.post(f"{link}/compras/.json", data=json.dumps(data))
+            "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S")
+        }).execute()
 
         open_position = True
         print('ORDEM DE COMPRA LANÇADA')
@@ -99,13 +105,6 @@ def strategy(pair, qty, open_position=False):
     while open_position:
         time.sleep(0.5)
         df = get_minute_data(pair, '1m', '2')
-
-        data = {
-            "price": float(df.Close.iloc[-1])
-        }
-
-        requests.patch(
-            f"{link}/currentPrice/1ca584fc-80a3-45d0-b9ec-5ca0da8fc570/.json", data=json.dumps(data))
 
         os.system('cls')
         print(f'Current Close  -> ' + str(df.Close.iloc[-1]))
@@ -116,17 +115,14 @@ def strategy(pair, qty, open_position=False):
             order = client.create_order(
                 symbol=pair, side='SELL', type='MARKET', quantity=qty)
 
-            data = {
-                "buyPrice": float(df.Close.iloc[-1]),
+            supabase.table("vendas").insert({
+                "sellPrice": float(df.Close.iloc[-1]),
                 "targetPrice": buyprice * target,
                 "stopPrice": buyprice * stop,
                 "pair": pair,
                 "quantity": qty,
-                "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S"),
-                "key": str(uuid.uuid4())
-            }
-
-            requests.post(f"{link}/vendas/.json", data=json.dumps(data))
+                "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S")
+            }).execute()
 
             print('ORDEM DE VENDA LANÇADA')
             break
