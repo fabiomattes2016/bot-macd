@@ -25,8 +25,8 @@ while True:
         "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S")
     }
 
-    requests.post(
-        f"{link}/saldos/.json", data=json.dumps(data))
+    requests.patch(
+        f"{link}/currentBalance/32906bbf-8cda-4c94-9b2e-4026be415a47/.json", data=json.dumps(data))
 
     os.system('cls')
     print('-------------------------------------------')
@@ -40,4 +40,4 @@ while True:
     print(f'BTC  -> ' + str(btc['locked']))
     print(f'USDT -> ' + str(usdt['locked']))
     print('-------------------------------------------')
-    time.sleep(86400)
+    time.sleep(5)

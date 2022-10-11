@@ -22,7 +22,7 @@ from datetime import datetime
 
 
 warnings.filterwarnings("ignore")
-link = "https://bot-macd-default-rtdb.firebaseio.com/"
+link = "https://bot-macd-default-rtdb.firebaseio.com"
 timestamp = datetime.now()
 client = Client(api_key=api_key_test, api_secret=secret_key_test, testnet=True)
 
@@ -65,6 +65,14 @@ def strategy(pair, qty, open_position=False):
     apply_technicals(df)
     inst = Signals(df, 25)
     inst.decide()
+
+    data = {
+        "price": float(df.Close.iloc[-1])
+    }
+
+    requests.patch(
+        f"{link}/currentPrice/1ca584fc-80a3-45d0-b9ec-5ca0da8fc570/.json", data=json.dumps(data))
+
     os.system('cls')
     print(f'Current Close -> ' + str(df.Close.iloc[-1]))
 
@@ -75,6 +83,8 @@ def strategy(pair, qty, open_position=False):
 
         data = {
             "buyprice": buyprice,
+            "targetPrice": buyprice * target,
+            "stopPrice": buyprice * stop,
             "pair": pair,
             "quantity": qty,
             "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S"),
@@ -89,6 +99,14 @@ def strategy(pair, qty, open_position=False):
     while open_position:
         time.sleep(0.5)
         df = get_minute_data(pair, '1m', '2')
+
+        data = {
+            "price": float(df.Close.iloc[-1])
+        }
+
+        requests.patch(
+            f"{link}/currentPrice/1ca584fc-80a3-45d0-b9ec-5ca0da8fc570/.json", data=json.dumps(data))
+
         os.system('cls')
         print(f'Current Close  -> ' + str(df.Close.iloc[-1]))
         print(f'Current Target -> ' + str(buyprice * target))
@@ -99,14 +117,16 @@ def strategy(pair, qty, open_position=False):
                 symbol=pair, side='SELL', type='MARKET', quantity=qty)
 
             data = {
-                "buyprice": buyprice,
+                "buyPrice": float(df.Close.iloc[-1]),
+                "targetPrice": buyprice * target,
+                "stopPrice": buyprice * stop,
                 "pair": pair,
                 "quantity": qty,
                 "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S"),
                 "key": str(uuid.uuid4())
             }
 
-            requests.post(f"{link}/compras/.json", data=json.dumps(data))
+            requests.post(f"{link}/vendas/.json", data=json.dumps(data))
 
             print('ORDEM DE VENDA LANÇADA')
             break
