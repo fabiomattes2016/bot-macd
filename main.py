@@ -111,6 +111,10 @@ def strategy(pair, qty, open_position=False):
         print(f'Current Target -> ' + str(buyprice * target))
         print(f'Current Stop   -> ' + str(buyprice * stop))
 
+        supabase.table("current_price").update({
+            "price": float(df.Close.iloc[-1])
+        }).eq("id", "24b8b5f0-8e76-4cbe-9f1e-6841fd03fa3a").execute()
+
         if df.Close[-1] <= buyprice * stop or df.Close[-1] >= target * buyprice:
             order = client.create_order(
                 symbol=pair, side='SELL', type='MARKET', quantity=qty)
@@ -121,7 +125,7 @@ def strategy(pair, qty, open_position=False):
                 "stopPrice": buyprice * stop,
                 "pair": pair,
                 "quantity": qty,
-                "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S")
+                "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             }).execute()
 
             print('ORDEM DE VENDA LANÇADA')

@@ -38,7 +38,7 @@ while True:
         "btc": float(btc['free']),
         "usdt": float(usdt['free']),
         "timestamp": timestamp.strftime("%d/%m/%Y %H:%M:%S")
-    }).eq("id", "55969e07-451d-45de-b131-02d98e9195b9").execute()
+    }).eq("id", "15c35a5a-1169-4eee-bb2f-5097e0f13bfd").execute()
 
     os.system('cls')
     print('-------------------------------------------')
